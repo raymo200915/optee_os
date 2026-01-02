@@ -134,7 +134,8 @@ void sbi_mpxy_rpmi_probe_channels(void)
 		goto error;
 	}
 
-	sbi_mpxy_rpmi_ctx->channel_count = valid_channels;
+	assert(sbi_mpxy_rpmi_ctx->channel_count == valid_channels);
+
 	return;
 
 error:
