@@ -37,15 +37,15 @@ void sbi_mpxy_rpmi_probe_channels(void)
 		return;
 	}
 
-	ret = sbi_mpxy_get_shmem_size(&mpxy_shmem_size);
-	if (ret) {
-		EMSG("Failed to get MPXY shared memory size (ret=%d)", ret);
-		goto error;
-	}
-
 	sbi_mpxy_rpmi_ctx = calloc(1, sizeof(*sbi_mpxy_rpmi_ctx));
 	if (!sbi_mpxy_rpmi_ctx) {
 		EMSG("Out of memory for RPMI context");
+		goto error;
+	}
+
+	ret = sbi_mpxy_get_shmem_size(&mpxy_shmem_size);
+	if (ret) {
+		EMSG("Failed to get MPXY shared memory size (ret=%d)", ret);
 		goto error;
 	}
 
