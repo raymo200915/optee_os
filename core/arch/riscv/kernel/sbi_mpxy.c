@@ -119,6 +119,7 @@ int sbi_mpxy_set_shmem(void)
 	unsigned long shmem_phys_hi = 0;
 	void *shmem = NULL;
 	uint32_t exceptions = 0;
+	uint32_t hartid = 0;
 	int ret = SBI_ERR_FAILURE;
 
 	ret = sbi_mpxy_get_shmem_size(&shmem_size);
@@ -175,6 +176,11 @@ int sbi_mpxy_set_shmem(void)
 	}
 
 	mpxy->shmem_active = true;
+
+	hartid = thread_get_hartid();
+	DMSG("MPXY shmem activated for hart%d: va=%p pa=0x%" PRIx64 " sz=0x%lx",
+	     hartid, shmem, mpxy->shmem_pa, shmem_size);
+
 
 	ret = SBI_SUCCESS;
 
