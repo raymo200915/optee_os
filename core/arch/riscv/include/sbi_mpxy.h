@@ -142,7 +142,7 @@ struct sbi_mpxy_notification_data {
 
 /* SBI MPXY */
 int sbi_mpxy_get_shmem_size(unsigned long *shmem_size);
-int sbi_mpxy_set_shmem(void);
+int sbi_mpxy_set_shmem(unsigned long shmem_size);
 int sbi_mpxy_get_channel_ids(uint32_t channel_count, uint32_t *channel_ids);
 int sbi_mpxy_read_attributes(uint32_t channel_id, uint32_t base_attribute_id,
 			     uint32_t attribute_count, void *attribute_buf);
