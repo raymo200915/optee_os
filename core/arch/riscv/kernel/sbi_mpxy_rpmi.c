@@ -49,6 +49,13 @@ void sbi_mpxy_rpmi_probe_channels(void)
 		goto error;
 	}
 
+	/* Setup MPXY shared memory on current hart */
+	ret = sbi_mpxy_set_shmem(mpxy_shmem_size);
+	if (ret) {
+		EMSG("Failed to set MPXY shared memory (ret=%d)", ret);
+		goto error;
+	}
+
 	ret = sbi_mpxy_get_channel_count(&sbi_mpxy_rpmi_ctx->channel_count);
 	if (ret || !sbi_mpxy_rpmi_ctx->channel_count) {
 		EMSG("Failed to get MPXY channel count (ret=%d)", ret);
