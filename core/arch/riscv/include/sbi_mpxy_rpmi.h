@@ -92,6 +92,7 @@ struct sbi_mpxy_rpmi_channel {
 /* An instance of RPMI-over-MPXY channel group */
 struct sbi_mpxy_rpmi_context {
 	uint32_t channel_count;
+	unsigned long mpxy_shmem_size;
 	struct sbi_mpxy_rpmi_channel *channels;
 };
 

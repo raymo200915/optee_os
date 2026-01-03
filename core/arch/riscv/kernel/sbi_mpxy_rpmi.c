@@ -26,7 +26,7 @@ void sbi_mpxy_rpmi_probe_channels(void)
 {
 	struct sbi_mpxy_rpmi_channel *channel = NULL;
 	uint32_t *channel_ids = NULL;
-	unsigned long mpxy_shmem_size = 0;
+	unsigned long shmem_size = 0;
 	uint32_t valid_channels = 0;
 	uint32_t i = 0;
 	int ret = 0;
@@ -37,20 +37,22 @@ void sbi_mpxy_rpmi_probe_channels(void)
 		return;
 	}
 
-	ret = sbi_mpxy_get_shmem_size(&mpxy_shmem_size);
-	if (ret) {
-		EMSG("Failed to get MPXY shared memory size (ret=%d)", ret);
-		goto error;
-	}
-
 	sbi_mpxy_rpmi_ctx = calloc(1, sizeof(*sbi_mpxy_rpmi_ctx));
 	if (!sbi_mpxy_rpmi_ctx) {
 		EMSG("Out of memory for RPMI context");
 		goto error;
 	}
 
+	ret = sbi_mpxy_get_shmem_size(&shmem_size);
+	if (ret) {
+		EMSG("Failed to get MPXY shared memory size (ret=%d)", ret);
+		goto error;
+	}
+
+	sbi_mpxy_rpmi_ctx->mpxy_shmem_size = shmem_size;
+
 	/* Setup MPXY shared memory on current hart */
-	ret = sbi_mpxy_set_shmem(mpxy_shmem_size);
+	ret = sbi_mpxy_set_shmem(shmem_size);
 	if (ret) {
 		EMSG("Failed to set MPXY shared memory (ret=%d)", ret);
 		goto error;
@@ -113,14 +115,14 @@ void sbi_mpxy_rpmi_probe_channels(void)
 			continue;
 		}
 
-		channel->notif = malloc(mpxy_shmem_size);
+		channel->notif = malloc(shmem_size);
 		if (!channel->notif) {
 			EMSG("No memory for channel %u notif buffer",
 			     channel_id);
 			goto error;
 		}
 
-		memset(channel->notif, 0, mpxy_shmem_size);
+		memset(channel->notif, 0, shmem_size);
 		valid_channels++;
 	}
 
