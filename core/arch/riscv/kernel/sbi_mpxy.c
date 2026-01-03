@@ -69,14 +69,15 @@ int sbi_mpxy_get_shmem_size(unsigned long *shmem_size)
 
 /**
  * sbi_mpxy_set_shmem - Set up MPXY shared memory on the current hart
+ * @shmem_size: Size of shared memory to allocate in bytes (must >= 4 KiB)
  *
- * Allocates and registers a 4 KiB shared memory region, aligned to 4 KiB,
- * as required by the MPXY extension. This memory is used for sending and
- * receiving messages. Registers the shared memory with the SBI MPXY extension.
+ * Allocates and registers shared memory region of the specified size, aligned
+ * to 4 KiB as required by the MPXY extension. This memory is used for sending
+ * and receiving messages. Registers the shared memory with the SBI MPXY extension.
  *
  * Return: SBI_SUCCESS on success, negative SBI error code on failure.
  */
-int sbi_mpxy_set_shmem(void)
+int sbi_mpxy_set_shmem(unsigned long shmem_size)
 {
 	struct mpxy_core_local *mpxy = NULL;
 	struct sbiret sbiret = {};
@@ -87,10 +88,10 @@ int sbi_mpxy_set_shmem(void)
 	exceptions = thread_mask_exceptions(THREAD_EXCP_ALL);
 
 	mpxy = mpxy_get_core_local();
-	if (mpxy->shmem_active)
+	if (shmem_size < SMALL_PAGE_SIZE || mpxy->shmem_active)
 		goto out;
 
-	shmem = memalign(SMALL_PAGE_SIZE, SMALL_PAGE_SIZE);
+	shmem = memalign(SMALL_PAGE_SIZE, shmem_size);
 	if (!shmem)
 		goto out;
 
