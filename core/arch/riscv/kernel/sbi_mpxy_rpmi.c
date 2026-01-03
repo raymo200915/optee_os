@@ -3,6 +3,7 @@
  * Copyright (c) 2025 NXP
  */
 
+#include <kernel/panic.h>
 #include <riscv.h>
 #include <rpmi.h>
 #include <sbi.h>
@@ -31,6 +32,9 @@ void sbi_mpxy_rpmi_probe_channels(void)
 	uint32_t i = 0;
 	int ret = 0;
 	uint32_t channel_id = 0;
+
+	if (!sbi_probe_extension(SBI_EXT_MPXY))
+		panic("sbi mpxy extension must be supported");
 
 	if (sbi_mpxy_rpmi_ctx) {
 		EMSG("RPMI/MPXY context already initialized");
