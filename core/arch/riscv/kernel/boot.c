@@ -272,6 +272,7 @@ __weak void boot_primary_init_core_ids(void)
 #endif
 }
 
+#ifdef CFG_RISCV_SBI_MPXY_RPMI
 /*
  * fdt_get_reqfwd_hartid_by_channel_id - Find hartid for a reqfwd channel
  * @fdt: pointer to device tree blob
@@ -382,7 +383,7 @@ static void boot_primary_bind_sbi_mpxy_channels(void)
 		     channel->channel_id, hartid);
 	}
 }
-
+#endif
 /* May be overridden in plat-$(PLATFORM)/main.c */
 __weak void boot_secondary_init_intc(void)
 {
@@ -433,10 +434,12 @@ void __weak boot_init_primary_runtime(void)
 	init_tee_runtime();
 	boot_mem_release_tmp_alloc();
 
+#ifdef CFG_RISCV_SBI_MPXY_RPMI
 	if (!sbi_mpxy_init()) {
 		sbi_mpxy_rpmi_probe_channels();
 		boot_primary_bind_sbi_mpxy_channels();
 	}
+#endif
 }
 
 void __weak boot_init_primary_final(void)
