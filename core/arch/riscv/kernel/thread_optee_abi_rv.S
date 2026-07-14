@@ -29,7 +29,7 @@
  */
 FUNC thread_return_to_udomain , :
 	/* Caller should provide arguments in a0~a5 */
-#if defined(CFG_RISCV_WITH_M_MODE_SM)
+#if defined(CFG_RISCV_SBI_MPXY_RPMI)
 	j	thread_return_to_udomain_by_sbi_mpxy
 #else
 	/* Other protocol */
