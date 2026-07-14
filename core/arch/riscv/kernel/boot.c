@@ -202,6 +202,7 @@ __weak void boot_primary_init_core_ids(void)
 #endif
 }
 
+#ifdef CFG_RISCV_SBI_MPXY_RPMI
 /*
  * fdt_get_reqfwd_hartid_by_channel_id - Find hartid for a reqfwd channel
  * @fdt: pointer to device tree blob
@@ -315,11 +316,6 @@ static void boot_primary_init_sbi_mpxy(void)
 	}
 }
 
-/* May be overridden in plat-$(PLATFORM)/main.c */
-__weak void boot_secondary_init_intc(void)
-{
-}
-
 static void boot_secondary_init_sbi_mpxy(void)
 {
 	int ret = 0;
@@ -329,6 +325,12 @@ static void boot_secondary_init_sbi_mpxy(void)
 		EMSG("Failed to set MPXY shared memory");
 		return;
 	}
+}
+#endif
+
+/* May be overridden in plat-$(PLATFORM)/main.c */
+__weak void boot_secondary_init_intc(void)
+{
 }
 
 void boot_init_primary_early(void)
@@ -355,7 +357,7 @@ void __weak boot_init_primary_runtime(void)
 	assert(pos == 0);
 
 	thread_init_primary();
-#ifdef CFG_RISCV_SBI_MPXY
+#ifdef CFG_RISCV_SBI_MPXY_RPMI
 	boot_primary_init_sbi_mpxy();
 #endif
 	IMSG("OP-TEE version: %s", core_v_str);
@@ -401,7 +403,7 @@ static void init_secondary_helper(void)
 
 	thread_init_per_cpu();
 	boot_secondary_init_intc();
-#ifdef CFG_RISCV_SBI_MPXY
+#ifdef CFG_RISCV_SBI_MPXY_RPMI
 	boot_secondary_init_sbi_mpxy();
 #endif
 
