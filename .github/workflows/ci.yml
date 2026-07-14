@@ -636,7 +636,7 @@ jobs:
           bash ci-host-cleanup.sh
       - name: Checkout docker_optee_os_ci
         run: |
-          git clone --depth 1 --branch rp022-m2 \
+          git clone --depth 1 --branch upstream-test \
             https://github.com/raymo200915/docker_optee_os_ci.git \
             docker_optee_os_ci
       - name: Create Dockerfile
