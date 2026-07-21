@@ -666,7 +666,7 @@ jobs:
           - name: default
             make_commands: |
               make -j$(nproc) all CMAKE_POLICY_VERSION_MINIMUM=3.5
-              make -j$(nproc) check XTEST_ARGS=1001
+              make -j$(nproc) check XTEST_ARGS=1001 DUMP_LOGS_ON_ERROR=1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -715,6 +715,29 @@ jobs:
               mv $TOP/optee_os $TOP/optee_os_old
               ln -s /runner/optee_os $TOP/optee_os
               cd $TOP/build
+
+              echo "== manifests HEAD =="
+              git -C $TOP/.repo/manifests rev-parse HEAD
+
+              echo "== repo manifest -r =="
+              repo -C $TOP manifest -r
+
+              echo "== component HEAD/tree =="
+              git -C $TOP/u-boot rev-parse HEAD HEAD^{tree}
+              git -C $TOP/linux rev-parse HEAD HEAD^{tree}
+              git -C $TOP/opensbi rev-parse HEAD HEAD^{tree}
+
+              echo "== U-Boot OP-TEE config =="
+              grep -E "CONFIG_(TEE|OPTEE|OPTEE_LIB|RNG_OPTEE|CMD_RNG|SPL_OPTEE_LOAD_ADDR|SPL_OPENSBI|SBI)=" \
+                $TOP/u-boot/.config || true
+              grep -E "^# CONFIG_(TEE|OPTEE|OPTEE_LIB|RNG_OPTEE|CMD_RNG) is not set" \
+                $TOP/u-boot/.config || true
+
+              echo "== out/bin before make =="
+              ls -l $TOP/out/bin || true
+
+              echo "== U-Boot DT references before make =="
+              strings $TOP/u-boot/u-boot.itb | grep -E "linaro,optee-tz|riscv,rpmi-mpxy-tee|riscv,sbi-mpxy-reqfwd|opensbi-domain" || true
 
               ccache -s -v
               eval "$MAKE_COMMANDS"
