@@ -703,15 +703,18 @@ jobs:
           MAKE_COMMANDS: "${{ matrix.make_commands }}"
           XTEST_CONTINUE_ON_FAIL: y
         run: |
+          mkdir -p /home/runner/work/qemuriscv64-artifacts
           docker run --rm \
             -v /home/runner/work/optee_os/optee_os:/runner/optee_os \
             -v /home/runner/work/ccache:/root/.cache/ccache \
+            -v /home/runner/work/qemuriscv64-artifacts:/runner_artifacts \
             -w /root \
             -e MAKE_COMMANDS="$MAKE_COMMANDS" \
             -e XTEST_CONTINUE_ON_FAIL="$XTEST_CONTINUE_ON_FAIL" \
             qemuriscv64_image \
             bash -c '
               set -e -v
+              trap "mkdir -p /runner_artifacts; cp -f \$TOP/out/bin/serial*.log /runner_artifacts/ 2>/dev/null || true" EXIT
 
               export BR2_CCACHE_DIR=/root/.cache/ccache
               export FORCE_UNSAFE_CONFIGURE=1
@@ -726,6 +729,15 @@ jobs:
               eval "$MAKE_COMMANDS"
               ccache -s -v
             '
+      - name: Upload QEMUriscv64 serial logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qemuriscv64-serial-logs-${{ matrix.name }}
+          path: |
+            /home/runner/work/qemuriscv64-artifacts/serial*.log
+          if-no-files-found: warn
+          retention-days: 5
   QEMUv8_arm64_image_build:
     name: Build QEMUv8 arm64 image
     runs-on: ubuntu-24.04-arm
