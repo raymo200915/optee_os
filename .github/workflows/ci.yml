@@ -700,12 +700,14 @@ jobs:
       - name: Run 'make check' tasks in container
         env:
           MAKE_COMMANDS: "${{ matrix.make_commands }}"
+          XTEST_CONTINUE_ON_FAIL: y
         run: |
           docker run --rm \
             -v /home/runner/work/optee_os/optee_os:/runner/optee_os \
             -v /home/runner/work/ccache:/root/.cache/ccache \
             -w /root \
             -e MAKE_COMMANDS="$MAKE_COMMANDS" \
+            -e XTEST_CONTINUE_ON_FAIL="$XTEST_CONTINUE_ON_FAIL" \
             qemuriscv64_image \
             bash -c '
               set -e -v
