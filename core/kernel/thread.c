@@ -376,6 +376,15 @@ void thread_init_boot_thread(void)
 
 	l->curr_thread = 0;
 	threads[0].state = THREAD_STATE_ACTIVE;
+#if defined(CFG_WITH_VFP)
+	/*
+	 * The boot thread executes initcalls, including crypto initcalls that may
+	 * use the vector unit. Unlike threads allocated for standard calls, it
+	 * does not pass through __thread_alloc_and_run().
+	 */
+	if (thread_init_vector_context(&threads[0].vfp_state))
+		panic("Failed to allocate boot thread vector contexts");
+#endif
 }
 
 void __nostackcheck thread_clr_boot_thread(void)
