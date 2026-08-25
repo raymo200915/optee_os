@@ -10,3 +10,7 @@ srcs-$(CFG_CORE_CRYPTO_SHA256_ACCEL) += sha256_riscv_zvkng_glue.c
 srcs-$(CFG_CORE_CRYPTO_SHA256_ACCEL) += sha256_riscv_zvkng.S
 srcs-$(CFG_CORE_CRYPTO_SHA512_ACCEL) += sha512_riscv_zvkng_glue.c
 srcs-$(CFG_CORE_CRYPTO_SHA512_ACCEL) += sha512_riscv_zvkng.S
+
+# The generic crypto library selects the AES implementation via this option.
+srcs-$(CFG_CORE_CRYPTO_AES_ACCEL) += aes_riscv_zvkng_glue.c
+srcs-$(CFG_CORE_CRYPTO_AES_ACCEL) += aes_riscv_zvkng.S
