@@ -103,6 +103,16 @@ $(call force,CFG_WITH_VFP,n)
 $(call force,CFG_WITH_STMM_SP,n)
 $(call force,CFG_TA_BTI,n)
 
+CFG_RISCV_VECTOR ?= n
+CFG_RISCV_ZVKNG ?= n
+
+ifeq ($(CFG_RISCV_ZVKNG),y)
+$(call force,CFG_RISCV_VECTOR,y,required by CFG_RISCV_ZVKNG)
+endif
+ifeq ($(CFG_RISCV_VECTOR),y)
+$(call force,CFG_WITH_VFP,y,required by CFG_RISCV_VECTOR)
+endif
+
 # Enable generic timer
 $(call force,CFG_CORE_HAS_GENERIC_TIMER,y)
 
@@ -127,11 +137,18 @@ endif
 ifeq ($(CFG_RISCV_ISA_C),y)
 ISA_C = c
 endif
+ifeq ($(CFG_RISCV_VECTOR),y)
+ISA_V = v
+endif
 ifeq ($(CFG_RISCV_ISA_ZBB),y)
 ISA_ZBB = _zbb
 endif
 
+# Do not expose V to the C compiler. Otherwise it may auto-vectorize
+# ordinary core code, which can run while sstatus.VS is Off. RVV instructions
+# are restricted to explicitly managed assembly routines instead.
 riscv-isa = $(ISA_BASE)$(ISA_D)$(ISA_C)$(ISA_ZBB)_zicsr_zifencei
+riscv-asm-isa = $(ISA_BASE)$(ISA_D)$(ISA_C)$(ISA_V)$(ISA_ZBB)_zicsr_zifencei
 riscv-abi = $(ABI_BASE)$(ABI_D)
 
 rv64-platform-cflags += -mcmodel=$(riscv-platform-mcmodel)
@@ -144,7 +161,7 @@ rv64-platform-cppflags += -DRV64=1 -D__LP64__=1
 rv32-platform-cppflags += -DRV32=1 -D__ILP32__=1
 
 platform-cflags-generic ?= -ffunction-sections -fdata-sections -pipe
-platform-aflags-generic ?= -pipe -march=$(riscv-isa) -mabi=$(riscv-abi)
+platform-aflags-generic ?= -pipe -march=$(riscv-asm-isa) -mabi=$(riscv-abi)
 
 rv64-platform-cflags-generic := -mstrict-align $(call cc-option,)
 
