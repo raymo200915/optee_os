@@ -411,6 +411,9 @@ void abort_handler(uint32_t abort_type, struct thread_abort_regs *regs)
 	case FAULT_TYPE_USER_MODE_VFP:
 		vfp_disable();
 		handle_user_mode_vfp();
+		ai.regs->status &= ~CSR_XSTATUS_VS_MASK;
+		ai.regs->status |= SHIFT_U64(CSR_XSTATUS_VS_INITIAL,
+					     CSR_XSTATUS_VS_BIT);
 		break;
 #endif
 	case FAULT_TYPE_PAGE_FAULT:
