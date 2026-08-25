@@ -109,6 +109,14 @@ static void riscv_vector_disable(void)
 	write_csr(CSR_XSTATUS, xstatus);
 }
 
+static void riscv_vector_set_vs(unsigned long vs)
+{
+	unsigned long xstatus = read_csr(CSR_XSTATUS);
+
+	xstatus = xstatus_set_vs(xstatus, vs);
+	write_csr(CSR_XSTATUS, xstatus);
+}
+
 static void thread_eager_save_ns_vfp(void)
 {
 	struct thread_ctx *thr = threads + thread_get_id();
@@ -144,6 +152,8 @@ static void thread_eager_restore_ns_vfp(void)
 
 	if (thr->vfp_state.ns_valid)
 		thread_restore_vector_state(thr->vfp_state.ns);
+	if (thr->vfp_state.ns_valid)
+		riscv_vector_set_vs(riscv_vector_state_vs(thr->vfp_state.ns));
 
 	/*
 	 * If ns_valid is false, no secure vector context has replaced the
@@ -370,15 +380,6 @@ static void init_regs(struct thread_ctx *thread, uint32_t a0, uint32_t a1,
 	thread->regs.a5 = a5;
 	thread->regs.a6 = a6;
 	thread->regs.a7 = a7;
-}
-
-static void thread_ensure_vector_context(struct thread_ctx *thr)
-{
-	if (thr->vfp_state.ns && thr->vfp_state.sec)
-		return;
-
-	if (thread_init_vector_context(&thr->vfp_state))
-		panic("Failed to allocate RISC-V vector contexts");
 }
 
 static void __thread_alloc_and_run(uint32_t a0, uint32_t a1, uint32_t a2,
@@ -770,6 +771,13 @@ uint32_t thread_enter_user_mode(unsigned long a0, unsigned long a1,
 #endif
 	regs = thread_get_ctx_regs();
 	status = xstatus_for_xret(true, PRV_U);
+#if defined(CFG_WITH_VFP)
+	if (uctx->vfp.valid)
+		status = xstatus_set_vs(status,
+					 riscv_vector_state_vs(uctx->vfp.vector_state));
+	else
+		status = xstatus_set_vs(status, CSR_XSTATUS_VS_INITIAL);
+#endif
 	set_ctx_regs(regs, a0, a1, a2, a3, user_sp, entry_func, status, ie,
 		     NULL);
 	rc = __thread_enter_user_mode(regs, exit_status0, exit_status1);
@@ -1041,7 +1049,7 @@ void thread_user_enable_vfp(struct thread_user_vfp_state *tuv)
 	thread_restore_vector_state(tuv->vector_state);
 
 	if (tuv->valid)
-		riscv_vector_enable_clean();
+		riscv_vector_set_vs(riscv_vector_state_vs(tuv->vector_state));
 
 	thr->vfp_state.uvfp = tuv;
 	thr->vfp_state.owner = RISCV_VECTOR_OWNER_USER;
@@ -1089,7 +1097,7 @@ void thread_user_restore_vfp(void)
 
 	if (tuv->valid) {
 		thread_restore_vector_state(tuv->vector_state);
-		riscv_vector_enable_clean();
+		riscv_vector_set_vs(riscv_vector_state_vs(tuv->vector_state));
 	} else {
 		/*
 		 * The allocation was zeroed by calloc(). Restore it to prevent
@@ -1168,12 +1176,12 @@ void thread_ns_restore_vfp(void)
 
 	if (thr->vfp_state.ns_valid) {
 		thread_restore_vector_state(thr->vfp_state.ns);
-		riscv_vector_enable_clean();
+		riscv_vector_set_vs(riscv_vector_state_vs(thr->vfp_state.ns));
 	}
 
 	thr->vfp_state.owner = RISCV_VECTOR_OWNER_NS;
 
 	thread_set_exceptions(exceptions);
 }
-#endif /* CFG_WITH_VFP && */
-
+#endif /* CFG_WITH_VFP */
+#endif /* CFG_WITH_VFP */

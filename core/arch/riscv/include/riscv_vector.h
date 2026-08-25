@@ -15,8 +15,12 @@
 
 /* Vector Context Struct */
 struct riscv_vector_state {
+	/* The VS field in xstatus, stored separately from the other status bits. */
+	unsigned long vs;
 	unsigned long vcsr;
 	unsigned long vstart;
+	unsigned long vl;
+	unsigned long vtype;
 	uint8_t vregs[];
 };
 
@@ -24,6 +28,12 @@ struct riscv_vector_state {
 void riscv_vector_save(struct riscv_vector_state *dst);
 void riscv_vector_restore(const struct riscv_vector_state *src);
 size_t riscv_vector_state_size(void);
+
+static inline unsigned long
+riscv_vector_state_vs(const struct riscv_vector_state *state)
+{
+	return state->vs;
+}
 
 #endif /* CFG_WITH_VFP */
 #endif /* !__ASSEMBLER__ */
