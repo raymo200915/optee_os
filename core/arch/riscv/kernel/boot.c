@@ -8,6 +8,7 @@
 #include <compiler.h>
 #include <config.h>
 #include <console.h>
+#include <initcall.h>
 #include <keep.h>
 #include <kernel/boot.h>
 #include <kernel/dt.h>
@@ -37,6 +38,16 @@ paddr_t start_addr;
 
 uint32_t sem_cpu_sync[CFG_TEE_CORE_NB_CORE];
 uint32_t hartids[CFG_TEE_CORE_NB_CORE];
+
+#ifdef CFG_RISCV_ZVKNG
+TEE_Result crypto_riscv_zvkng_aes_kat(void);
+
+static TEE_Result aes_kat_init(void)
+{
+	return crypto_riscv_zvkng_aes_kat();
+}
+service_init_crypto(aes_kat_init);
+#endif
 
 #if defined(CFG_DT)
 static int mark_tddram_as_reserved(struct dt_descriptor *dt)
