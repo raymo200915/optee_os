@@ -3,13 +3,38 @@
  * Copyright (c) 2026, RISCstar Solutions Corporation
  */
 
+#include <assert.h>
+#include <stdbool.h>
 #include <crypto/crypto_accel.h>
+#include <kernel/thread.h>
 #include <string.h>
 #include <types_ext.h>
 #include <utee_defines.h>
 #include <util.h>
 
 #define AES_EXPANDED_KEY_SIZE	(15 * TEE_AES_BLOCK_SIZE)
+
+/*
+ * The Linux vector routines consume struct crypto_aes_ctx: an encryption
+ * schedule, a decryption schedule, then the original key length at byte
+ * offset 480.  LibTomCrypt stores only the 240-byte schedules separately,
+ * so the mode wrappers build this ABI adapter on the stack when invoking the
+ * assembly.
+ */
+struct riscv_aes_key {
+	uint8_t enc_key[15][TEE_AES_BLOCK_SIZE];
+	uint8_t dec_key[15][TEE_AES_BLOCK_SIZE];
+	uint32_t key_len;
+} __aligned(16);
+
+void aes_ecb_encrypt_zvkned(const struct riscv_aes_key *key,
+			     const void *in, void *out, size_t len);
+void aes_xts_encrypt_zvkned_zvbb_zvkg(const struct riscv_aes_key *key,
+				       const void *in, void *out, size_t len,
+				       void *tweak);
+void aes_xts_decrypt_zvkned_zvbb_zvkg(const struct riscv_aes_key *key,
+				       const void *in, void *out, size_t len,
+				       void *tweak);
 
 static uint8_t gf_mul(uint8_t a, uint8_t b)
 {
@@ -124,4 +149,67 @@ TEE_Result crypto_accel_aes_expand_keys(const void *key, size_t key_len,
 	*round_count = rounds;
 
 	return TEE_SUCCESS;
+}
+
+static unsigned int key_len_from_round_count(unsigned int round_count)
+{
+	switch (round_count) {
+	case 10:
+		return 16;
+	case 12:
+		return 24;
+	case 14:
+		return 32;
+	default:
+		return 0;
+	}
+}
+
+static void make_linux_key(struct riscv_aes_key *dst, const void *src,
+			   unsigned int round_count)
+{
+	memset(dst, 0, sizeof(*dst));
+	memcpy(dst->enc_key, src, sizeof(dst->enc_key));
+	dst->key_len = key_len_from_round_count(round_count);
+}
+
+static void aes_xts_crypt(void *out, const void *in, const void *key1,
+			  unsigned int round_count, unsigned int block_count,
+			  const void *key2, void *tweak, bool decrypt)
+{
+	struct riscv_aes_key data_key = { };
+	struct riscv_aes_key tweak_key = { };
+	uint32_t vfp_state = 0;
+
+	assert(out && in && key1 && key2 && tweak);
+	assert(block_count);
+	make_linux_key(&data_key, key1, round_count);
+	make_linux_key(&tweak_key, key2, round_count);
+	assert(data_key.key_len);
+
+	vfp_state = thread_kernel_enable_vfp();
+	aes_ecb_encrypt_zvkned(&tweak_key, tweak, tweak, TEE_AES_BLOCK_SIZE);
+	if (decrypt)
+		aes_xts_decrypt_zvkned_zvbb_zvkg(&data_key, in, out,
+					  block_count * TEE_AES_BLOCK_SIZE, tweak);
+	else
+		aes_xts_encrypt_zvkned_zvbb_zvkg(&data_key, in, out,
+					  block_count * TEE_AES_BLOCK_SIZE, tweak);
+	thread_kernel_disable_vfp(vfp_state);
+}
+
+void crypto_accel_aes_xts_enc(void *out, const void *in, const void *key1,
+			      unsigned int round_count, unsigned int block_count,
+			      const void *key2, void *tweak)
+{
+	aes_xts_crypt(out, in, key1, round_count, block_count, key2, tweak,
+		      false);
+}
+
+void crypto_accel_aes_xts_dec(void *out, const void *in, const void *key1,
+			      unsigned int round_count, unsigned int block_count,
+			      const void *key2, void *tweak)
+{
+	aes_xts_crypt(out, in, key1, round_count, block_count, key2, tweak,
+		      true);
 }
