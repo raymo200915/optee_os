@@ -11,6 +11,7 @@ srcs-$(CFG_CORE_CRYPTO_SHA256_ACCEL) += sha256_riscv_zvkng.S
 srcs-$(CFG_CORE_CRYPTO_SHA512_ACCEL) += sha512_riscv_zvkng_glue.c
 srcs-$(CFG_CORE_CRYPTO_SHA512_ACCEL) += sha512_riscv_zvkng.S
 
-# The generic crypto library selects the AES implementation via this option.
-srcs-$(CFG_CORE_CRYPTO_AES_ACCEL) += aes_riscv_zvkng_glue.c
-srcs-$(CFG_CORE_CRYPTO_AES_ACCEL) += aes_riscv_zvkng.S
+# Local KAT build: compiling with Zvkng also links the key-expansion code.
+# Revert this to CFG_CORE_CRYPTO_AES_ACCEL-only after validation.
+srcs-$(call cfg-one-enabled,CFG_CORE_CRYPTO_AES_ACCEL CFG_RISCV_ZVKNG) += aes_riscv_zvkng_glue.c
+srcs-$(call cfg-one-enabled,CFG_CORE_CRYPTO_AES_ACCEL CFG_RISCV_ZVKNG) += aes_riscv_zvkng.S
