@@ -105,6 +105,28 @@ $(call force,CFG_TA_BTI,n)
 CFG_RISCV_VECTOR ?= n
 CFG_RISCV_ZVKNG ?= n
 CFG_RISCV_ZVKSG ?= n
+CFG_RISCV_TEST_AES_KAT ?= n
+CFG_RISCV_TEST_SHA2_KAT ?= n
+
+# The SHA-2 KAT runs during early secure-world initialization and manages VS
+# locally. It must not be combined with a runtime accelerator or the AES KAT,
+# both of which require the normal vector context-switch support.
+ifneq ($(call cfg-all-enabled,CFG_RISCV_TEST_SHA2_KAT \
+	CFG_RISCV_TEST_AES_KAT),n)
+$(error CFG_RISCV_TEST_SHA2_KAT cannot be combined with CFG_RISCV_TEST_AES_KAT)
+endif
+ifneq ($(call cfg-one-enabled,CFG_CORE_CRYPTO_AES_ACCEL \
+	CFG_CORE_CRYPTO_SHA256_ACCEL CFG_CORE_CRYPTO_SHA512_ACCEL),n)
+ifeq ($(CFG_RISCV_TEST_SHA2_KAT),y)
+$(error CFG_RISCV_TEST_SHA2_KAT cannot be combined with crypto acceleration)
+endif
+endif
+
+ifneq ($(call cfg-one-enabled,CFG_RISCV_TEST_AES_KAT \
+	CFG_RISCV_TEST_SHA2_KAT),n)
+$(call force,CFG_RISCV_ZVKNG,y,required by RISC-V crypto KAT)
+$(call force,CFG_RISCV_VECTOR,y,required by RISC-V crypto KAT)
+endif
 
 ifeq ($(CFG_RISCV_ZVKNG),y)
 $(call force,CFG_RISCV_VECTOR,y,required by CFG_RISCV_ZVKNG)
@@ -113,7 +135,9 @@ ifeq ($(CFG_RISCV_ZVKSG),y)
 $(call force,CFG_RISCV_VECTOR,y,required by CFG_RISCV_ZVKSG)
 endif
 ifeq ($(CFG_RISCV_VECTOR),y)
+ifneq ($(CFG_RISCV_TEST_SHA2_KAT),y)
 $(call force,CFG_WITH_VFP,y,required by CFG_RISCV_VECTOR)
+endif
 endif
 
 # The crypto_drv API is architecture neutral. On RISC-V, SHA-2

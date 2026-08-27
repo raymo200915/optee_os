@@ -39,7 +39,7 @@ paddr_t start_addr;
 uint32_t sem_cpu_sync[CFG_TEE_CORE_NB_CORE];
 uint32_t hartids[CFG_TEE_CORE_NB_CORE];
 
-#ifdef CFG_RISCV_ZVKNG
+#ifdef CFG_RISCV_TEST_AES_KAT
 TEE_Result crypto_riscv_zvkng_aes_kat(void);
 
 static TEE_Result aes_kat_init(void)

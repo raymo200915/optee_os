@@ -201,7 +201,7 @@ void crypto_accel_aes_xts_dec(void *out, const void *in, const void *key1,
 		      true);
 }
 
-#ifdef CFG_RISCV_ZVKNG
+#ifdef CFG_RISCV_TEST_AES_KAT
 TEE_Result crypto_riscv_zvkng_aes_kat(void);
 
 static TEE_Result test_aes_expand_key(const uint8_t *key, size_t key_len,
