@@ -20,14 +20,22 @@
 #endif
 
 /*
- * Emit the RISC-V CFI property note in user mode objects (TA libraries
- * and ldelf), see riscv.S. The core is never built with CFI.
+ * Emit RISC-V CFI metadata in protected user-mode objects (TA libraries and
+ * ldelf), see riscv.S.
  */
 #if defined(__riscv) && !defined(__KERNEL__) && \
     (defined(CFG_TA_ZICFILP) || defined(CFG_TA_ZICFISS))
 #define RISCV_CFI(...) __VA_ARGS__
 #else
 #define RISCV_CFI(...)
+#endif
+
+#if defined(__riscv) && \
+    ((defined(__KERNEL__) && defined(CFG_CORE_ZICFILP)) || \
+     (!defined(__KERNEL__) && defined(CFG_TA_ZICFILP)))
+#define RISCV_LPAD(...) __VA_ARGS__
+#else
+#define RISCV_LPAD(...)
 #endif
 
 #if defined(CFG_UNWIND) && defined(__arm__)
@@ -50,6 +58,7 @@ UNWIND(	.fnstart)
 	.ifc	\_bti\(),default
 BTI(	bti	c)
 	.endif
+RISCV_LPAD(lpad	0)
 	.endm
 
 	.macro LOCAL_FUNC name colon section=default align=4 _bti=default
@@ -65,6 +74,7 @@ UNWIND(	.fnstart)
 	.ifc	\_bti\(),default
 BTI(	bti	c)
 	.endif
+RISCV_LPAD(lpad	0)
 	.endm
 
 	.macro WEAK_FUNC name colon section=default align=4 _bti=default
@@ -81,6 +91,7 @@ UNWIND(	.fnstart)
 	.ifc	\_bti\(),default
 BTI(	bti	c)
 	.endif
+RISCV_LPAD(lpad	0)
 	.endm
 
 	.macro END_FUNC name
