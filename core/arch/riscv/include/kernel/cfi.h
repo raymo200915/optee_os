@@ -9,10 +9,12 @@
 #include <stdbool.h>
 
 /*
- * Control-flow integrity for user mode: Zicfilp landing pads
- * (CFG_TA_ZICFILP) and Zicfiss shadow stacks (CFG_TA_ZICFISS).
+ * Control-flow integrity: S-mode and user-mode Zicfilp landing pads
+ * (CFG_CORE_ZICFILP and CFG_TA_ZICFILP) and user-mode Zicfiss shadow
+ * stacks (CFG_TA_ZICFISS).
  */
-#if defined(CFG_TA_ZICFILP) || defined(CFG_TA_ZICFISS)
+#if defined(CFG_CORE_ZICFILP) || defined(CFG_TA_ZICFILP) || \
+	defined(CFG_TA_ZICFISS)
 /* Probe and enable the extensions on the calling hart, once at boot */
 void cfi_init_hart(void);
 #else
