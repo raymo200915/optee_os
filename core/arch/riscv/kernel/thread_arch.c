@@ -268,6 +268,14 @@ unsigned long xstatus_for_xret(uint8_t pie, uint8_t pp)
 
 	assert(pp == PRV_M || pp == PRV_S || pp == PRV_U);
 
+	/*
+	 * This status is for a newly created return context, not for a
+	 * previously interrupted one. Do not carry a live Zicfilp expected
+	 * landing-pad state into the new context. Trap and thread-resume paths
+	 * restore their saved complete sstatus values instead.
+	 */
+	xstatus &= ~CSR_XSTATUS_SPELP;
+
 #ifdef RV32
 	xstatus = set_field_u32(xstatus, CSR_XSTATUS_IE, 0);
 	xstatus = set_field_u32(xstatus, CSR_XSTATUS_PIE, pie);
