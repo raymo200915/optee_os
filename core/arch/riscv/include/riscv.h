@@ -81,6 +81,8 @@
 #define CSR_XSTATUS_SPP		BIT(8)
 #define CSR_XSTATUS_SUM		BIT(18)
 #define CSR_XSTATUS_MXR		BIT(19)
+/* Supervisor previous expected landing pad, defined by Zicfilp */
+#define CSR_XSTATUS_SPELP	BIT(23)
 
 /* xstatus.FS: state of the floating-point unit, two bits on RV32 and RV64 */
 #define CSR_XSTATUS_FS_SHIFT	13
