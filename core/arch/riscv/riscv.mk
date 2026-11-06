@@ -182,8 +182,10 @@ else
 cfi-ta-cflags := -fcf-protection=$(cfi-ta-protection)
 endif
 # Probed with the ISA string: the option is rejected without the
-# matching extension in -march, so cc-option alone would not do.
-cfi-ta-cc-check := $(shell $(CC$(sm)) -Werror -march=$(riscv-isa) \
+# matching extension in -march, so cc-option alone would not do. Do not use
+# -Werror here: unrelated driver warnings must not be treated as a missing
+# CFI compiler capability.
+cfi-ta-cc-check := $(shell $(CC$(sm)) -march=$(riscv-isa) \
 			-mabi=$(riscv-abi) $(cfi-ta-cflags) -c -x c /dev/null \
 			-o /dev/null 2>/dev/null || echo unsupported)
 ifeq ($(cfi-ta-cc-check),unsupported)
