@@ -140,9 +140,14 @@ ISA_ZICBOM = _zicbom
 CFG_RISCV_CBOM_BLOCK_SIZE ?= 64
 endif
 
+# Zicfilp forward-edge CFI for the S-mode core. Runtime enforcement via
+# menvcfg.LPE is deliberately not enabled by this option; it is controlled by
+# M-mode firmware and is handled separately.
+CFG_CORE_ZICFILP ?= n
+$(eval $(call cfg-depends-all,CFG_CORE_ZICFILP,CFG_RISCV_S_MODE))
+
 # Zicfilp forward-edge CFI for TAs and ldelf: senvcfg.LPE is set per user
-# context when all its executable mappings are TEE_MATTR_GUARDED. The core
-# is not built with landing pads, menvcfg.LPE belongs to the M-mode firmware.
+# context when all its executable mappings are TEE_MATTR_GUARDED.
 CFG_TA_ZICFILP ?= n
 $(eval $(call cfg-depends-all,CFG_TA_ZICFILP,CFG_WITH_USER_TA CFG_RISCV_S_MODE))
 
@@ -154,12 +159,23 @@ $(eval $(call cfg-depends-all,CFG_TA_ZICFILP,CFG_WITH_USER_TA CFG_RISCV_S_MODE))
 CFG_TA_ZICFISS ?= n
 $(eval $(call cfg-depends-all,CFG_TA_ZICFISS,CFG_WITH_USER_TA CFG_RISCV_S_MODE CFG_RISCV_SBI))
 
-# The CFI extensions are added to the ISA string of every build stage:
-# the core does not use them but ldelf is built with the core compiler
-# and needs them for -fcf-protection, and a compiler that lacks them is
-# too old for the option anyway.
-ifeq ($(CFG_TA_ZICFILP),y)
+# The CFI extensions are added to the common ISA string. LLVM 22 still
+# treats Zicfilp as experimental and uses the versioned ISA spelling.
+ifneq ($(filter y,$(CFG_CORE_ZICFILP) $(CFG_TA_ZICFILP)),)
+ifeq ($(COMPILER_core),clang)
+ISA_ZICFILP = _zicfilp1p0
+cfi-zicfilp-cflags = -menable-experimental-extensions \
+			     -mcf-branch-label-scheme=unlabeled
+cfi-zicfilp-aflags = -menable-experimental-extensions
+else
 ISA_ZICFILP = _zicfilp
+endif
+endif
+
+ifeq ($(CFG_CORE_ZICFILP),y)
+cfi-core-protection += branch
+endif
+ifeq ($(CFG_TA_ZICFILP),y)
 cfi-ta-protection += branch
 endif
 ifeq ($(CFG_TA_ZICFISS),y)
@@ -172,25 +188,44 @@ riscv-abi = $(ABI_BASE)$(ABI_D)
 
 # -fcf-protection=branch emits an LPAD at every indirect branch target,
 # =return wraps prologues and epilogues in SSPUSH/SSPOPCHK, =full does
-# both. The compiler also emits the GNU_PROPERTY_RISCV_FEATURE_1_AND
-# note ldelf reads. GCC 15 is the first release with the option for
-# RISC-V; refuse to silently build unprotected TAs with an older one.
+# both. GCC 15 is the first release with the option for RISC-V; refuse to
+# silently build unprotected code with an older compiler.
+ifneq ($(cfi-core-protection),)
+cfi-core-cflags := -fcf-protection=$(cfi-core-protection) \
+			   $(cfi-zicfilp-cflags)
+endif
+
 ifneq ($(cfi-ta-protection),)
 ifeq ($(cfi-ta-protection),branch return)
-cfi-ta-cflags := -fcf-protection=full
+cfi-ta-cflags := -fcf-protection=full $(cfi-zicfilp-cflags)
 else
-cfi-ta-cflags := -fcf-protection=$(cfi-ta-protection)
+cfi-ta-cflags := -fcf-protection=$(cfi-ta-protection) $(cfi-zicfilp-cflags)
 endif
+endif
+
+ifneq ($(strip $(cfi-core-cflags) $(cfi-ta-cflags)),)
 # Probed with the ISA string: the option is rejected without the
 # matching extension in -march, so cc-option alone would not do. Do not use
 # -Werror here: unrelated driver warnings must not be treated as a missing
 # CFI compiler capability.
-cfi-ta-cc-check := $(shell $(CC$(sm)) -march=$(riscv-isa) \
-			-mabi=$(riscv-abi) $(cfi-ta-cflags) -c -x c /dev/null \
+cfi-cc-check := $(shell $(CCcore) -march=$(riscv-isa) \
+			-mabi=$(riscv-abi) $(sort $(cfi-core-cflags) $(cfi-ta-cflags)) \
+			-c -x c /dev/null \
 			-o /dev/null 2>/dev/null || echo unsupported)
-ifeq ($(cfi-ta-cc-check),unsupported)
-$(error $(cfi-ta-cflags) with -march=$(riscv-isa) not supported by $(CC$(sm)))
+ifeq ($(cfi-cc-check),unsupported)
+$(error RISC-V CFI flags with -march=$(riscv-isa) not supported by $(CCcore))
 endif
+endif
+
+ifneq ($(cfi-core-cflags),)
+# ldelf inherits core-platform-{c,a}flags. Add these directly to the core
+# submodule so CFG_CORE_ZICFILP does not instrument ldelf when TA protection
+# has not been requested.
+cflagscore += $(cfi-core-cflags)
+aflagscore += $(cfi-zicfilp-aflags)
+endif
+
+ifneq ($(cfi-ta-cflags),)
 # ldelf runs in user mode next to the TAs and is built with the same
 # protection, see ldelf/ldelf.mk
 ldelf-platform-cflags += $(cfi-ta-cflags)
