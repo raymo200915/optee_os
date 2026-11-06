@@ -17,21 +17,42 @@ static bool lp_available;
 static bool ss_available;
 
 /*
- * senvcfg.LPE is WPRI on a hart without Zicfilp: writes are ignored and
- * it reads as zero. Write it and read it back to learn whether landing
- * pads can be enforced for user mode at all. The bit is left clear, it
- * is set per user context by core_mmu_set_user_map().
+ * FWFT LANDING_PAD controls menvcfg.LPE for the calling S-mode domain.
+ * It enables landing-pad enforcement in S-mode and makes senvcfg.LPE
+ * writable for the per-user-context policy. It is hart-local, so this
+ * runs on every OP-TEE hart during boot.
  */
-static bool probe_landing_pads(void)
+static bool enable_landing_pads(void)
 {
 	bool available = false;
+	unsigned long value = 0;
+	int rc = SBI_SUCCESS;
 
-	if (!IS_ENABLED(CFG_TA_ZICFILP))
+	/* menvcfg.LPE enforces S-mode too, so the core must be protected. */
+	if (!IS_ENABLED(CFG_CORE_ZICFILP))
 		return false;
 
-	set_csr(CSR_SENVCFG, CSR_SENVCFG_LPE);
-	available = read_csr(CSR_SENVCFG) & CSR_SENVCFG_LPE;
-	clear_csr(CSR_SENVCFG, CSR_SENVCFG_LPE);
+	rc = sbi_fwft_set(SBI_FWFT_LANDING_PAD, 1, 0);
+	if (rc) {
+		if (rc != SBI_ERR_NOT_SUPPORTED)
+			EMSG("SBI FWFT landing-pad enable failed: %d", rc);
+		return false;
+	}
+
+	rc = sbi_fwft_get(SBI_FWFT_LANDING_PAD, &value);
+	if (rc || value != 1) {
+		if (rc)
+			EMSG("SBI FWFT landing-pad query failed: %d", rc);
+		return false;
+	}
+
+	if (IS_ENABLED(CFG_TA_ZICFILP)) {
+		set_csr(CSR_SENVCFG, CSR_SENVCFG_LPE);
+		available = read_csr(CSR_SENVCFG) & CSR_SENVCFG_LPE;
+		clear_csr(CSR_SENVCFG, CSR_SENVCFG_LPE);
+	} else {
+		available = true;
+	}
 
 	return available;
 }
@@ -73,14 +94,14 @@ bool cfi_shadow_stack_enabled(void)
 
 void cfi_init_hart(void)
 {
-	bool lp = probe_landing_pads();
+	bool lp = enable_landing_pads();
 	bool ss = enable_shadow_stacks();
 
 	if (get_core_pos() == 0) {
 		lp_available = lp;
 		ss_available = ss;
-		if (IS_ENABLED(CFG_TA_ZICFILP))
-			IMSG("Zicfilp landing pads for user mode: %s",
+		if (IS_ENABLED(CFG_CORE_ZICFILP) || IS_ENABLED(CFG_TA_ZICFILP))
+			IMSG("Zicfilp landing pads: %s",
 			     lp ? "enabled" : "not available");
 		if (IS_ENABLED(CFG_TA_ZICFISS))
 			IMSG("Zicfiss shadow stacks for user mode: %s",
@@ -89,4 +110,7 @@ void cfi_init_hart(void)
 		EMSG("CFI extension availability differs between harts");
 		panic();
 	}
+
+	if (IS_ENABLED(CFG_CORE_ZICFILP) && !lp)
+		panic();
 }
