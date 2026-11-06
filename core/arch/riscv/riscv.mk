@@ -231,6 +231,15 @@ ifneq ($(cfi-ta-cflags),)
 ldelf-platform-cflags += $(cfi-ta-cflags)
 endif
 
+# LLVM 22 also needs its experimental-extension switch when assembling the
+# LPADs in ldelf and in the TA libraries. Keep this TA-specific: core-only
+# Zicfilp must not change the ldelf or TA assembly command lines.
+ifeq ($(CFG_TA_ZICFILP),y)
+cfi-ta-aflags := $(cfi-zicfilp-aflags)
+cfi-ta-cppflags := -DCFG_TA_ZICFILP
+ldelf-platform-aflags += $(cfi-ta-aflags)
+endif
+
 CFG_WITH_VFP ?= $(CFG_RISCV_FPU)
 $(eval $(call cfg-depends-all,CFG_WITH_VFP,CFG_RISCV_FPU))
 
@@ -307,6 +316,7 @@ ifneq ($(filter ta_rv32,$(ta-targets)),)
 CFG_RV32_ta_rv32 := y
 arch-bits-ta_rv32 := 32
 ta_rv32-platform-cppflags += $(rv32-platform-cppflags)
+ta_rv32-platform-cppflags += $(cfi-ta-cppflags)
 ta_rv32-platform-cflags += $(rv32-platform-cflags)
 ta_rv32-platform-cflags += $(platform-cflags-optimization)
 ta_rv32-platform-cflags += $(platform-cflags-debug-info)
@@ -320,6 +330,7 @@ endif
 ta_rv32-platform-aflags += $(platform-aflags-generic)
 ta_rv32-platform-aflags += $(platform-aflags-debug-info)
 ta_rv32-platform-aflags += $(rv32-platform-aflags)
+ta_rv32-platform-aflags += $(cfi-ta-aflags)
 
 ta_rv32-platform-cxxflags += -fpic
 ta_rv32-platform-cxxflags += $(cfi-ta-cflags)
@@ -346,6 +357,7 @@ ifneq ($(filter ta_rv64,$(ta-targets)),)
 CFG_RV64_ta_rv64 := y
 arch-bits-ta_rv64 := 64
 ta_rv64-platform-cppflags += $(rv64-platform-cppflags)
+ta_rv64-platform-cppflags += $(cfi-ta-cppflags)
 ta_rv64-platform-cflags += $(rv64-platform-cflags)
 ta_rv64-platform-cflags += $(platform-cflags-optimization)
 ta_rv64-platform-cflags += $(platform-cflags-debug-info)
@@ -363,6 +375,7 @@ endif
 ta_rv64-platform-aflags += $(platform-aflags-generic)
 ta_rv64-platform-aflags += $(platform-aflags-debug-info)
 ta_rv64-platform-aflags += $(rv64-platform-aflags)
+ta_rv64-platform-aflags += $(cfi-ta-aflags)
 
 ta_rv64-platform-cxxflags += -fpic
 ta_rv64-platform-cxxflags += $(cfi-ta-cflags)
