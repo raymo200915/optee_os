@@ -1304,6 +1304,9 @@ static void load_main(struct ta_elf *elf)
 	close_handle(elf);
 	set_tls_offset(elf);
 	parse_property_segment(elf);
+	if (IS_ENABLED(CFG_TA_ZICFILP) && !elf->bti_enabled)
+		IMSG("Warning: TA %pUl has no Zicfilp landing-pad property, "
+		     "running unguarded", (void *)&elf->uuid);
 	if (elf->bti_enabled)
 		ta_elf_add_bti(elf);
 
