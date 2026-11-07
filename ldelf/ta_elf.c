@@ -639,7 +639,9 @@ static void parse_load_segments(struct ta_elf *elf)
 				elf->tls_start = phdr[n].p_vaddr;
 				elf->tls_filesz = phdr[n].p_filesz;
 				elf->tls_memsz = phdr[n].p_memsz;
-			} else if (IS_ENABLED(CFG_TA_BTI) &&
+			} else if ((IS_ENABLED(CFG_TA_BTI) ||
+				    IS_ENABLED(CFG_TA_ZICFILP) ||
+				    IS_ENABLED(CFG_TA_ZICFISS)) &&
 				   phdr[n].p_type == PT_GNU_PROPERTY) {
 				elf->prop_start = phdr[n].p_vaddr;
 				elf->prop_align = phdr[n].p_align;
