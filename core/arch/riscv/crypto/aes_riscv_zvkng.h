@@ -21,6 +21,8 @@ struct riscv_aes_key {
 	uint32_t key_len;
 } __aligned(16);
 
+uint32_t riscv_aes_subword(uint32_t word);
+
 void aes_ecb_encrypt_zvkned(const struct riscv_aes_key *key,
 			    const void *in, void *out, size_t len);
 void aes_ecb_decrypt_zvkned(const struct riscv_aes_key *key,
