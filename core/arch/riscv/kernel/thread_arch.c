@@ -12,6 +12,7 @@
 #include <asan.h>
 #include <assert.h>
 #include <config.h>
+#include <initcall.h>
 #include <io.h>
 #include <keep.h>
 #include <kernel/boot.h>
@@ -525,6 +526,7 @@ void thread_init_per_cpu(void)
 	 * on entry: start with the units off, each turned on only by its owner.
 	 */
 	vfp_disable();
+	vfp_init_per_cpu();
 #endif
 }
 
@@ -548,6 +550,25 @@ static void set_ctx_regs(struct thread_ctx_regs *regs, unsigned long a0,
 }
 
 #ifdef CFG_WITH_VFP
+#if defined(CFG_RISCV_ISA_V)
+/*
+ * The REE kernel buffers are allocated once at boot; the domain switch is
+ * then free of allocation and has no failure path.
+ */
+static TEE_Result riscv_vector_alloc(void)
+{
+	size_t n = 0;
+
+	for (n = 0; n < CFG_NUM_THREADS; n++) {
+		if (!vfp_alloc_vector_context(&threads[n].vfp_state.ns))
+			panic("Failed to allocate vector context");
+	}
+
+	return TEE_SUCCESS;
+}
+service_init(riscv_vector_alloc);
+#endif /* CFG_RISCV_ISA_V */
+
 uint32_t thread_kernel_enable_vfp(void)
 {
 	uint32_t exceptions = thread_mask_exceptions(THREAD_EXCP_FOREIGN_INTR);
@@ -665,6 +686,7 @@ void thread_user_clear_vfp(struct user_mode_ctx *uctx)
 		thr->vfp_state.uvfp = NULL;
 	uvfp->lazy_saved = false;
 	uvfp->saved = false;
+	vfp_free_vector_context(&uvfp->vfp);
 }
 #endif /*CFG_WITH_VFP*/
 
